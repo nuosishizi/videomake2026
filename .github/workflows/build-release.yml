@@ -1,0 +1,152 @@
+name: Build And Release Multi-Platform Packages
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  package-plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build plugin and full source archives
+        run: |
+          mkdir -p release
+          git archive --format=zip --output release/videomake2026-full.zip HEAD
+          zip -r release/videomake2026-plugin.zip manifest.json icon.png LICENSE README.md css elevenlabs html js
+
+      - name: Upload plugin and source archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugin-and-source
+          path: |
+            release/videomake2026-full.zip
+            release/videomake2026-plugin.zip
+
+  build-bridge-bin:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: bridge-bin-win-x64
+            os: windows-latest
+            command: npm run build:bin:win
+            artifact: release/bridge/dsc-bridge-win-x64.exe
+          - name: bridge-bin-macos-x64
+            os: macos-13
+            command: npm run build:bin:mac:x64
+            artifact: release/bridge/dsc-bridge-macos-x64
+          - name: bridge-bin-macos-arm64
+            os: macos-14
+            command: npm run build:bin:mac:arm64
+            artifact: release/bridge/dsc-bridge-macos-arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: bridge-server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: bridge-server
+        run: npm ci
+
+      - name: Build bridge binary
+        working-directory: bridge-server
+        run: ${{ matrix.command }}
+
+      - name: Upload bridge binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.artifact }}
+
+  build-bridge-tray:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: tray-win-x64-installer
+            os: windows-latest
+            command: npm run build:tray:win
+            artifact: |
+              release/bridge-tray/DSC-Bridge-*-win-*-installer.exe
+              release/bridge-tray/DSC-Bridge-*-win-*-installer.exe.blockmap
+          - name: tray-macos-x64
+            os: macos-13
+            command: npm run build:tray:mac
+            artifact: release/bridge-tray/DSC-Bridge-*-mac-x64.zip
+          - name: tray-macos-arm64
+            os: macos-14
+            command: npm run build:tray:mac
+            artifact: release/bridge-tray/DSC-Bridge-*-mac-arm64.zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: bridge-server/package-lock.json
+
+      - name: Install dependencies
+        working-directory: bridge-server
+        run: npm ci
+
+      - name: Build tray package
+        working-directory: bridge-server
+        run: ${{ matrix.command }}
+
+      - name: Upload tray package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ matrix.artifact }}
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs:
+      - package-plugin
+      - build-bridge-bin
+      - build-bridge-tray
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+
+      - name: Show release assets
+        run: find release-assets -type f | sort
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release-assets/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -44,6 +44,14 @@ Tray behavior:
 - Tray right-click menu: show panel / start-stop / restart / exit
 - To fully exit: use tray menu `退出`
 
+Logging:
+
+- Tray logs: `%APPDATA%/DSC-Bridge/logs/tray.log` (Windows)
+- Bridge logs: `%APPDATA%/DSC-Bridge/logs/bridge.log` (Windows)
+- In tray mode, bridge startup runs with strict packaged ffmpeg (`BRIDGE_STRICT_FFMPEG=1`).
+
+If old installer reports `spawn ... ENOENT`, upgrade to the latest tray installer build. This is fixed by using real packaged runtime paths and guarded child-process startup.
+
 ## Build installer binaries (Windows/macOS)
 
 ```bash

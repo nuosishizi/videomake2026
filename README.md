@@ -61,6 +61,7 @@ npm run build:tray:win
 ```
 
 Tray mode supports hide-to-tray background running and tray right-click exit.
+Tray installer starts bridge in strict packaged-ffmpeg mode and writes runtime logs for troubleshooting.
 
 `bridge-server` supports automatic ffmpeg component download through npm dependency `@ffmpeg-installer/ffmpeg` (with explicit override via `FFMPEG_BIN`).
 

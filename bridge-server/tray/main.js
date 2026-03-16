@@ -1,22 +1,36 @@
 const path = require('path')
 const fs = require('fs')
-const { fork } = require('child_process')
 const http = require('http')
 const { app, BrowserWindow, Menu, Tray, ipcMain, nativeImage } = require('electron')
+const { createBridgeServer } = require('../server')
 
 const BRIDGE_PORT = Number(process.env.PORT || 47890)
 const HEALTH_URL = `http://127.0.0.1:${BRIDGE_PORT}/health`
 
 let tray = null
 let win = null
-let bridgeProc = null
+let bridgeRuntime = null
 let quitRequested = false
 let healthTimer = null
+let trayLogFile = ''
 
 const state = {
   running: false,
   health: null,
   lastError: ''
+}
+
+function nowIso () {
+  return new Date().toISOString()
+}
+
+function initLogPaths () {
+  const logDir = path.join(app.getPath('userData'), 'logs')
+  fs.mkdirSync(logDir, { recursive: true })
+  trayLogFile = path.join(logDir, 'tray.log')
+  if (!process.env.BRIDGE_LOG_FILE) {
+    process.env.BRIDGE_LOG_FILE = path.join(logDir, 'bridge.log')
+  }
 }
 
 function broadcastState () {
@@ -37,8 +51,19 @@ function broadcastState () {
 }
 
 function pushLog (line) {
+  const text = `${nowIso()} ${line}`
+  console.log(`[tray] ${text}`)
+
+  if (trayLogFile) {
+    try {
+      fs.appendFileSync(trayLogFile, `${text}\n`)
+    } catch {
+      // Ignore file logging errors to avoid breaking the app.
+    }
+  }
+
   BrowserWindow.getAllWindows().forEach(w => {
-    w.webContents.send('tray:log-line', line)
+    w.webContents.send('tray:log-line', text)
   })
 }
 
@@ -103,64 +128,76 @@ function stopHealthMonitor () {
   healthTimer = null
 }
 
-function startBridgeProcess () {
-  if (bridgeProc) {
+async function startBridgeProcess () {
+  if (bridgeRuntime) {
     pushLog('Bridge 已在运行，忽略重复启动')
     return
   }
 
-  const serverEntry = path.join(__dirname, '..', 'server.js')
-  bridgeProc = fork(serverEntry, [], {
-    cwd: path.join(__dirname, '..'),
-    windowsHide: true,
-    env: {
-      ...process.env,
-      ELECTRON_RUN_AS_NODE: '1'
-    },
-    silent: true,
-    execArgv: []
-  })
+  try {
+    pushLog(`启动 Bridge 服务 (isPackaged=${app.isPackaged}, resourcesPath=${process.resourcesPath || 'n/a'})`)
 
-  bridgeProc.stdout.on('data', chunk => {
-    const txt = String(chunk).trim()
-    if (!txt) return
-    txt.split(/\r?\n/).forEach(line => pushLog(line))
-  })
+    process.env.BRIDGE_STRICT_FFMPEG = '1'
 
-  bridgeProc.stderr.on('data', chunk => {
-    const txt = String(chunk).trim()
-    if (!txt) return
-    txt.split(/\r?\n/).forEach(line => pushLog(`ERR: ${line}`))
-    state.lastError = txt
-  })
+    bridgeRuntime = await createBridgeServer({
+      port: BRIDGE_PORT,
+      strictPackagedFfmpeg: true,
+      logFilePath: process.env.BRIDGE_LOG_FILE
+    })
 
-  bridgeProc.on('exit', code => {
-    pushLog(`Bridge 进程退出，code=${code}`)
-    bridgeProc = null
-    state.running = false
-    if (!quitRequested) {
-      state.lastError = state.lastError || `Bridge 退出 code=${code}`
+    state.running = true
+    state.lastError = ''
+    state.health = {
+      ok: true,
+      ffmpeg: bridgeRuntime.ffmpegBin,
+      ffmpegExists: fs.existsSync(bridgeRuntime.ffmpegBin),
+      platform: process.platform,
+      pid: process.pid
     }
+
+    pushLog(`Bridge 服务已启动，FFmpeg=${bridgeRuntime.ffmpegBin}`)
+    broadcastState()
+  } catch (error) {
+    state.running = false
+    state.lastError = `启动失败: ${error.message}`
+    state.health = null
+    pushLog(`ERR: ${state.lastError}`)
+    broadcastState()
+  }
+}
+
+async function stopBridgeProcess () {
+  if (!bridgeRuntime) {
+    state.running = false
+    broadcastState()
+    return
+  }
+
+  pushLog('正在停止 Bridge 服务...')
+  try {
+    await bridgeRuntime.stop()
+    pushLog('Bridge 服务已停止')
+  } catch (error) {
+    state.lastError = `停止失败: ${error.message}`
+    pushLog(`ERR: ${state.lastError}`)
+  } finally {
+    bridgeRuntime = null
+    state.running = false
+    broadcastState()
+  }
+}
+
+async function restartBridgeProcess () {
+  await stopBridgeProcess()
+  await startBridgeProcess()
+}
+
+function runSafely (fn) {
+  Promise.resolve(fn()).catch(error => {
+    state.lastError = `运行异常: ${error.message}`
+    pushLog(`ERR: ${state.lastError}`)
     broadcastState()
   })
-
-  state.running = true
-  state.lastError = ''
-  pushLog('Bridge 进程已启动')
-  broadcastState()
-}
-
-function stopBridgeProcess () {
-  if (!bridgeProc) return
-  pushLog('正在停止 Bridge 进程...')
-  bridgeProc.kill()
-}
-
-function restartBridgeProcess () {
-  stopBridgeProcess()
-  setTimeout(() => {
-    startBridgeProcess()
-  }, 500)
 }
 
 function createTray () {
@@ -181,22 +218,24 @@ function createTray () {
       {
         label: state.running ? '重启服务' : '启动服务',
         click: () => {
-          if (state.running) restartBridgeProcess()
-          else startBridgeProcess()
+          if (state.running) runSafely(() => restartBridgeProcess())
+          else runSafely(() => startBridgeProcess())
         }
       },
       {
         label: '停止服务',
         enabled: state.running,
-        click: () => stopBridgeProcess()
+        click: () => runSafely(() => stopBridgeProcess())
       },
       { type: 'separator' },
       {
         label: '退出',
         click: () => {
           quitRequested = true
-          stopBridgeProcess()
-          setTimeout(() => app.quit(), 300)
+          runSafely(async () => {
+            await stopBridgeProcess()
+            setTimeout(() => app.quit(), 150)
+          })
         }
       }
     ])
@@ -249,17 +288,17 @@ ipcMain.handle('tray:get-state', () => ({
 }))
 
 ipcMain.handle('tray:start-bridge', () => {
-  startBridgeProcess()
+  runSafely(() => startBridgeProcess())
   return true
 })
 
 ipcMain.handle('tray:stop-bridge', () => {
-  stopBridgeProcess()
+  runSafely(() => stopBridgeProcess())
   return true
 })
 
 ipcMain.handle('tray:restart-bridge', () => {
-  restartBridgeProcess()
+  runSafely(() => restartBridgeProcess())
   return true
 })
 
@@ -274,16 +313,18 @@ ipcMain.handle('tray:hide-window', () => {
 })
 
 app.whenReady().then(() => {
+  initLogPaths()
+  pushLog('托盘程序启动')
   createWindow()
   createTray()
   beginHealthMonitor()
-  startBridgeProcess()
+  runSafely(() => startBridgeProcess())
 })
 
 app.on('before-quit', () => {
   quitRequested = true
   stopHealthMonitor()
-  stopBridgeProcess()
+  runSafely(() => stopBridgeProcess())
 })
 
 app.on('window-all-closed', event => {
