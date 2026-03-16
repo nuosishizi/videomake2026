@@ -44,6 +44,7 @@ If local bridge fails or times out, extension falls back to original WebM output
 - Full source package: `release/videomake2026-full.zip`
 - Bridge installer binaries are produced in `release/bridge/`
 - Bridge installer bundles: `release/videomake2026-bridge-installer-*.zip`
+- Tray installer bundles: `release/videomake2026-bridge-tray-*.zip`
 
 Bridge binary build command:
 
@@ -51,6 +52,15 @@ Bridge binary build command:
 cd bridge-server
 npm run build:bin:all
 ```
+
+Bridge tray installer build command:
+
+```bash
+cd bridge-server
+npm run build:tray:win
+```
+
+Tray mode supports hide-to-tray background running and tray right-click exit.
 
 `bridge-server` supports automatic ffmpeg component download through npm dependency `@ffmpeg-installer/ffmpeg` (with explicit override via `FFMPEG_BIN`).
 

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DSC Bridge 控制台</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --muted: #94a3b8;
+      --text: #e5e7eb;
+      --ok: #10b981;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --line: #1f2937;
+      --btn: #2563eb;
+      --btn2: #334155;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 20% 0%, #1e293b 0, var(--bg) 45%);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      max-width: 620px;
+      margin: 0 auto;
+    }
+
+    .head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--warn);
+      box-shadow: 0 0 10px rgba(245,158,11,.6);
+    }
+
+    .dot.running {
+      background: var(--ok);
+      box-shadow: 0 0 10px rgba(16,185,129,.6);
+    }
+
+    .dot.error {
+      background: var(--danger);
+      box-shadow: 0 0 10px rgba(239,68,68,.6);
+    }
+
+    .grid {
+      margin-top: 12px;
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: 8px 10px;
+      font-size: 13px;
+    }
+
+    .k { color: var(--muted); }
+    .v { word-break: break-all; }
+
+    .actions {
+      margin-top: 14px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 1px solid transparent;
+      background: var(--btn);
+      color: #fff;
+      font-size: 13px;
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: opacity .2s ease;
+    }
+
+    button:hover { opacity: .9; }
+    button.alt { background: var(--btn2); border-color: var(--line); }
+
+    .hint {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .logs {
+      margin-top: 12px;
+      max-height: 200px;
+      overflow: auto;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      background: rgba(2,6,23,.7);
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="head">
+      <h1 class="title">DSC Bridge 控制台</h1>
+      <div class="status" id="statusBadge"><span class="dot" id="statusDot"></span><span id="statusText">启动中</span></div>
+    </div>
+
+    <div class="grid">
+      <div class="k">接口地址</div><div class="v" id="endpoint">http://127.0.0.1:47890/transcode</div>
+      <div class="k">健康检查</div><div class="v" id="health">http://127.0.0.1:47890/health</div>
+      <div class="k">FFmpeg</div><div class="v" id="ffmpeg">检测中...</div>
+      <div class="k">平台</div><div class="v" id="platform">检测中...</div>
+      <div class="k">最近错误</div><div class="v" id="lastError">无</div>
+    </div>
+
+    <div class="actions">
+      <button id="startBtn">启动服务</button>
+      <button id="stopBtn" class="alt">停止服务</button>
+      <button id="restartBtn" class="alt">重启服务</button>
+      <button id="hideBtn" class="alt">隐藏到托盘</button>
+    </div>
+
+    <div class="hint">关闭窗口不会退出，会继续在托盘后台运行。请在托盘图标右键菜单选择“退出”。</div>
+    <div class="logs" id="logs"></div>
+  </div>
+
+  <script src="./renderer.js"></script>
+</body>
+</html>

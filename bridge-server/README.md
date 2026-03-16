@@ -26,11 +26,23 @@ Make sure native ffmpeg is available in PATH.
 npm install
 ```
 
-## 3) Start server
+## 3) Start service
 
 ```bash
 npm start
 ```
+
+## 4) Start tray UI (recommended)
+
+```bash
+npm run start:tray
+```
+
+Tray behavior:
+
+- Close window: hide to tray, service continues in background
+- Tray right-click menu: show panel / start-stop / restart / exit
+- To fully exit: use tray menu `退出`
 
 ## Build installer binaries (Windows/macOS)
 
@@ -44,6 +56,20 @@ Artifacts will be generated under `../release/bridge/`:
 - `dsc-bridge-macos-x64`
 - `dsc-bridge-macos-arm64`
 
+## Build tray installer packages
+
+Windows installer package:
+
+```bash
+npm run build:tray:win
+```
+
+macOS zip app package (run on macOS):
+
+```bash
+npm run build:tray:mac
+```
+
 If building on Windows and `macos-arm64` fails in `pkg`, run this on a macOS machine:
 
 ```bash
@@ -55,6 +81,8 @@ npm run build:bin:mac:arm64
 - Windows one-command install/start: `install-win.ps1`
 - macOS one-command install/start: `install-mac.sh`
 - Quick start scripts: `start-win.bat`, `start-mac.command`
+
+These scripts now default to tray mode (`npm run start:tray`).
 
 Default endpoint:
 
