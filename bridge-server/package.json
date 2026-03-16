@@ -12,7 +12,9 @@
     "build:bin:mac:arm64": "pkg server.js --targets node18-macos-arm64 --output ../release/bridge/dsc-bridge-macos-arm64",
     "build:bin:all": "npm run build:bin:win && npm run build:bin:mac:x64 && npm run build:bin:mac:arm64",
     "build:tray:win": "electron-builder --config electron-builder.json --win nsis",
-    "build:tray:mac": "electron-builder --config electron-builder.json --mac zip"
+    "build:tray:mac:x64": "electron-builder --config electron-builder.json --mac zip --x64",
+    "build:tray:mac:arm64": "electron-builder --config electron-builder.json --mac zip --arm64",
+    "build:tray:mac": "npm run build:tray:mac:x64 && npm run build:tray:mac:arm64"
   },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",

@@ -43,7 +43,7 @@ jobs:
             command: npm run build:bin:win
             artifact: release/bridge/dsc-bridge-win-x64.exe
           - name: bridge-bin-macos-x64
-            os: macos-13
+            os: macos-14
             command: npm run build:bin:mac:x64
             artifact: release/bridge/dsc-bridge-macos-x64
           - name: bridge-bin-macos-arm64
@@ -90,12 +90,12 @@ jobs:
               release/bridge-tray/DSC-Bridge-*-win-*-installer.exe
               release/bridge-tray/DSC-Bridge-*-win-*-installer.exe.blockmap
           - name: tray-macos-x64
-            os: macos-13
-            command: npm run build:tray:mac
+            os: macos-14
+            command: npm run build:tray:mac:x64
             artifact: release/bridge-tray/DSC-Bridge-*-mac-x64.zip
           - name: tray-macos-arm64
             os: macos-14
-            command: npm run build:tray:mac
+            command: npm run build:tray:mac:arm64
             artifact: release/bridge-tray/DSC-Bridge-*-mac-arm64.zip
 
     runs-on: ${{ matrix.os }}
@@ -126,7 +126,7 @@ jobs:
           path: ${{ matrix.artifact }}
 
   publish-release:
-    if: startsWith(github.ref, 'refs/tags/')
+    if: startsWith(github.ref, 'refs/tags/') && always()
     needs:
       - package-plugin
       - build-bridge-bin
@@ -134,6 +134,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Show upstream job results
+        run: |
+          echo "package-plugin => ${{ needs.package-plugin.result }}"
+          echo "build-bridge-bin => ${{ needs.build-bridge-bin.result }}"
+          echo "build-bridge-tray => ${{ needs.build-bridge-tray.result }}"
+
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
