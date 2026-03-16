@@ -5,11 +5,19 @@
   "description": "Local native ffmpeg bridge for Dynamic Subtitle Composer",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build:bin:win": "pkg server.js --targets node18-win-x64 --output ../release/bridge/dsc-bridge-win-x64.exe",
+    "build:bin:mac:x64": "pkg server.js --targets node18-macos-x64 --output ../release/bridge/dsc-bridge-macos-x64",
+    "build:bin:mac:arm64": "pkg server.js --targets node18-macos-arm64 --output ../release/bridge/dsc-bridge-macos-arm64",
+    "build:bin:all": "npm run build:bin:win && npm run build:bin:mac:x64 && npm run build:bin:mac:arm64"
   },
   "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "multer": "^1.4.5-lts.2"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
   }
 }

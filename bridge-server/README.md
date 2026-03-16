@@ -2,7 +2,18 @@
 
 This server provides a local software interface for the extension.
 
-## 1) Install ffmpeg
+## 1) ffmpeg strategy (auto download first)
+
+After `npm install`, package `@ffmpeg-installer/ffmpeg` will automatically download a platform-specific ffmpeg binary.
+
+Priority order used by server:
+
+1. `FFMPEG_BIN` environment variable (explicit override)
+2. Repository bundled binary (`../ffmpeg/ffmpeg.exe` or `../ffmpeg/ffmpeg`)
+3. Auto-downloaded binary from `@ffmpeg-installer/ffmpeg`
+4. `ffmpeg` in system PATH (fallback)
+
+If you still prefer manual ffmpeg:
 
 Make sure native ffmpeg is available in PATH.
 
@@ -20,6 +31,30 @@ npm install
 ```bash
 npm start
 ```
+
+## Build installer binaries (Windows/macOS)
+
+```bash
+npm run build:bin:all
+```
+
+Artifacts will be generated under `../release/bridge/`:
+
+- `dsc-bridge-win-x64.exe`
+- `dsc-bridge-macos-x64`
+- `dsc-bridge-macos-arm64`
+
+If building on Windows and `macos-arm64` fails in `pkg`, run this on a macOS machine:
+
+```bash
+npm run build:bin:mac:arm64
+```
+
+## Installer scripts
+
+- Windows one-command install/start: `install-win.ps1`
+- macOS one-command install/start: `install-mac.sh`
+- Quick start scripts: `start-win.bat`, `start-mac.command`
 
 Default endpoint:
 

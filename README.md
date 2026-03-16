@@ -37,3 +37,21 @@ This extension now supports an optional local transcoding bridge for stable cros
 ### Fallback behavior
 
 If local bridge fails or times out, extension falls back to original WebM output automatically.
+
+## Packaging
+
+- Plugin package: `release/videomake2026-plugin.zip`
+- Full source package: `release/videomake2026-full.zip`
+- Bridge installer binaries are produced in `release/bridge/`
+- Bridge installer bundles: `release/videomake2026-bridge-installer-*.zip`
+
+Bridge binary build command:
+
+```bash
+cd bridge-server
+npm run build:bin:all
+```
+
+`bridge-server` supports automatic ffmpeg component download through npm dependency `@ffmpeg-installer/ffmpeg` (with explicit override via `FFMPEG_BIN`).
+
+Note: If `pkg` fails to build `macos-arm64` on Windows, run `npm run build:bin:mac:arm64` directly on a macOS host.

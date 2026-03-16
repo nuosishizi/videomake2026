@@ -6,6 +6,13 @@ const os = require('os')
 const path = require('path')
 const { spawn } = require('child_process')
 
+let ffmpegInstaller = null
+try {
+  ffmpegInstaller = require('@ffmpeg-installer/ffmpeg')
+} catch {
+  ffmpegInstaller = null
+}
+
 const app = express()
 const PORT = Number(process.env.PORT || 47890)
 const repoRoot = path.resolve(__dirname, '..')
@@ -15,9 +22,11 @@ function resolveFfmpegBin () {
 
   const bundledWin = path.join(repoRoot, 'ffmpeg', 'ffmpeg.exe')
   const bundledUnix = path.join(repoRoot, 'ffmpeg', 'ffmpeg')
+  const installerBin = ffmpegInstaller?.path
 
   if (process.platform === 'win32' && fs.existsSync(bundledWin)) return bundledWin
   if (fs.existsSync(bundledUnix)) return bundledUnix
+  if (installerBin && fs.existsSync(installerBin)) return installerBin
 
   return 'ffmpeg'
 }
